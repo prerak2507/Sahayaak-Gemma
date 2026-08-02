@@ -114,7 +114,32 @@ async function loadCollection(collection: string): Promise<StoredDoc[]> {
 
   if (exists) {
     try {
-      cache[collection] = JSON.parse(await fs.readFile(filePath(collection), 'utf8'));
+      const loaded: StoredDoc[] = JSON.parse(await fs.readFile(filePath(collection), 'utf8'));
+
+      // Top up rather than only filling an empty collection.
+      //
+      // On a serverless host /tmp can survive between deployments, so an
+      // instance may hold a file written by an older build: a couple of rows
+      // and none of the seeded board. Because the file existed, the seed was
+      // skipped, and every write addressed to a seeded id returned 404 from
+      // that instance while reads from a fresh instance looked fine. Merging
+      // the fixture in when its rows are absent makes any instance serve the
+      // same board.
+      const needsSeed =
+        (IS_SERVERLESS || process.env.STORE_AUTOSEED === 'true') &&
+        !loaded.some((r) => (r as any).seed_mode === 'prebuilt');
+
+      if (needsSeed) {
+        const seeded = await fixtureFor(collection);
+        if (seeded.length > 0) {
+          const have = new Set(loaded.map((r) => r.id));
+          cache[collection] = [...seeded.filter((r) => !have.has(r.id)), ...loaded];
+          await persist(collection);
+          return cache[collection];
+        }
+      }
+
+      cache[collection] = loaded;
       cachedMtime[collection] = mtime;
       return cache[collection];
     } catch {
