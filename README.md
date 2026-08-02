@@ -169,7 +169,8 @@ resident their report was not lost.
 - [docs/gemma-integration.md](docs/gemma-integration.md) — technical detail of
   every model call and both deliberate boundaries
 - [docs/demo-runbook.md](docs/demo-runbook.md) — demo checklist and failure recovery
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — running it on a public URL, and the WhatsApp bot
+- [DEPLOY-TO-VERCEL.md](DEPLOY-TO-VERCEL.md) — step-by-step Vercel deployment
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — the deployment options and their trade-offs, and the WhatsApp bot
 - [docs/kaggle-writeup.md](docs/kaggle-writeup.md) — the submission text
 
 ## WhatsApp intake

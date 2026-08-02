@@ -24,7 +24,8 @@ If you remember nothing else, open with that sentence and turn off the network.
 | 4 | **[docs/PROJECT.md](docs/PROJECT.md)** | night before | the full argument, including why Gemma over anything else |
 | 5 | [docs/gemma-integration.md](docs/gemma-integration.md) | if a judge goes deep | every model call, both boundaries |
 | 6 | **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | before publishing a link | how Gemma works on a live URL, and WhatsApp |
-| 7 | [docs/kaggle-writeup.md](docs/kaggle-writeup.md) | before submitting | the submission text, 1,499 words |
+| 7 | **[DEPLOY-TO-VERCEL.md](DEPLOY-TO-VERCEL.md)** | when publishing the link | step by step, with the exact env vars |
+| 8 | [docs/kaggle-writeup.md](docs/kaggle-writeup.md) | before submitting | the submission text, 1,499 words |
 
 There is also a Word version of the project document:
 **[docs/Sahaayak-Project-Overview.docx](docs/Sahaayak-Project-Overview.docx)**.
