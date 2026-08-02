@@ -22,6 +22,7 @@
 
 import { store } from '@/lib/store';
 import { scopeToCity, type NeedDocument } from './needs';
+import { ensureSeeded } from './ensure-seed';
 
 const TTL_MS = Number(process.env.BOARD_CACHE_TTL_MS) || 10_000;
 
@@ -33,6 +34,7 @@ let cached: BoardRow[] | null = null;
 let inFlight: Promise<BoardRow[]> | null = null;
 
 async function readBoard(): Promise<BoardRow[]> {
+  await ensureSeeded();
   const rows = await store().list('needs');
   return scopeToCity(rows as BoardRow[]);
 }

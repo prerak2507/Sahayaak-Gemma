@@ -2,24 +2,15 @@ import { NextResponse } from 'next/server';
 import { store } from '@/lib/store';
 import { scopeToCity } from '@/lib/data/needs';
 import { DEMO_VOLUNTEERS, buildVolunteer } from '@/lib/data/volunteers';
+import { ensureSeeded } from '@/lib/data/ensure-seed';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * The volunteer roster.
- *
- * Read and written through the server, like everything else, because Firestore
- * rules deny direct client access.
- *
- *   GET  /api/volunteers                       everyone in this city
- *   GET  /api/volunteers?organisation=RMC      scoped to one organisation
- *   POST /api/volunteers?seed=1                seed the demo roster
- *   PATCH /api/volunteers                      update one volunteer
- */
 export async function GET(request: Request) {
   const organisation = new URL(request.url).searchParams.get('organisation');
 
   try {
+    await ensureSeeded();
     const volunteers = scopeToCity(await store().list('volunteers')).filter(
       (v: any) => !organisation || v.organisation === organisation
     );
