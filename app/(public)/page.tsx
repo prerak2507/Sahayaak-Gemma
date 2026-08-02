@@ -5,24 +5,28 @@ import { LiveNeedsPreview } from '@/components/homepage/LiveNeedsPreview';
 import { SDGSection } from '@/components/homepage/SDGSection';
 import { GovernmentSection } from '@/components/homepage/GovernmentSection';
 import Link from 'next/link';
-import { db } from '@/lib/firebase/admin';
+import { store } from '@/lib/store';
 import { Task } from '@/types';
 
+/**
+ * Testimonials, from real closed work.
+ *
+ * Reads through the store rather than the admin SDK directly, so this works on
+ * a local-store deployment. It used to import firebase-admin, which meant the
+ * homepage logged a credential error on every build of an unconfigured
+ * install.
+ *
+ * Only well-rated completed tasks qualify. If none exist yet, the section does
+ * not render at all, rather than showing invented praise.
+ */
 async function getTestimonials() {
   try {
-    const snapshot = await db.collection('tasks')
-      .where('status', '==', 'completed')
-      .limit(10)
-      .get();
-      
-    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-    
-    // Filter and slice in-memory to bypass composite index requirement
-    return docs
-      .filter(task => (task.beneficiary_rating ?? 0) >= 4)
+    const tasks = await store().list('tasks');
+    return (tasks as any[])
+      .filter((task) => task.status === 'completed' && (task.beneficiary_rating ?? 0) >= 4)
       .slice(0, 3);
   } catch (error) {
-    console.error('Error fetching testimonials:', error);
+    console.warn('Testimonials unavailable:', (error as Error).message);
     return [];
   }
 }
