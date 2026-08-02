@@ -70,7 +70,19 @@ export const triageSchema = z.object({
   valid: z
     .boolean()
     .describe('True when this is a genuine request about public infrastructure or community aid'),
-  rejection_reason: z.enum(REJECTION_REASONS).describe('Why the report was refused, or "none"'),
+  // Tolerant of null and of unexpected wording.
+  //
+  // A strict enum here failed every report on some model builds, because a
+  // valid report is naturally described as having no rejection reason and the
+  // model returns null rather than the string "none". One field's phrasing
+  // should not throw away an otherwise perfect triage.
+  rejection_reason: z
+    .preprocess((v) => {
+      if (v === null || v === undefined || v === '') return 'none';
+      const s = String(v).toLowerCase().replace(/[\s-]+/g, '_');
+      return (REJECTION_REASONS as readonly string[]).includes(s) ? s : 'none';
+    }, z.enum(REJECTION_REASONS))
+    .describe('Why the report was refused, or "none" when it is valid'),
   language: z
     .enum(['gu', 'hi', 'en', 'other'])
     .describe('Language the resident wrote in. Romanized Gujarati is gu, not en'),
@@ -109,8 +121,16 @@ export const triageSchema = z.object({
     .string()
     .nullable()
     .describe('A place named in the report, copied exactly from the known landmark list, else null'),
-  required_crew_size: z.number().int().min(1).max(8),
-  skills_required: z.array(z.string()).min(1).max(4).describe('Concrete trade skills, lowercase'),
+  required_crew_size: z
+    .number()
+    .int()
+    .min(0)
+    .max(8)
+    .describe('People needed on site. 0 when the report is not valid'),
+  skills_required: z
+    .array(z.string())
+    .max(4)
+    .describe('Concrete trade skills, lowercase. Empty when the report is not valid'),
 });
 
 export type Triage = z.infer<typeof triageSchema>;

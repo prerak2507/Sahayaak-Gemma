@@ -161,4 +161,78 @@ export const DEMO_REPORTS: DemoReport[] = [
     ageMinutes: 55,
     note: 'Private property inside a home. Should be rejected, RMC does not do this',
   },
+
+  // ── Depth, so the board looks like a working week rather than a sample ──
+  {
+    text: 'Yagnik road na footpath par paver block uchka thai gaya chhe, vrudhho ne chalva ma takleef pade chhe.',
+    source: 'web',
+    ageMinutes: 3400,
+    note: 'Romanized Gujarati, footpath damage, PWD, accessibility angle',
+  },
+  {
+    text: '150 feet ring road par divider ni jhadio etli vadhi gai chhe ke saame nu dekhatu nathi.',
+    source: 'whatsapp',
+    ageMinutes: 4100,
+    note: 'Overgrown median blocking sightlines, sanitation or PWD',
+  },
+  {
+    text: 'મધાપર ચોકમાં ટ્રાફિક સિગ્નલ ત્રણ દિવસથી બંધ છે, સવારે બહુ જામ થાય છે.',
+    source: 'web',
+    ageMinutes: 2600,
+    note: 'Gujarati script, dead traffic signal, electricity',
+  },
+  {
+    text: 'Gondal road pe naali ka pani sadak par aa raha hai, bacche wahi se school jaate hain.',
+    source: 'whatsapp',
+    ageMinutes: 520,
+    note: 'Hindi, drain water on a school route, drainage, health risk',
+  },
+  {
+    text: 'University road par public toilet ni safai kaik divas thi thai nathi, bahu ganda chhe.',
+    source: 'web',
+    ageMinutes: 1900,
+    note: 'Romanized Gujarati, public sanitation',
+  },
+  {
+    text: 'The water tanker has not come to our lane in Mavdi for four days. Around thirty families here.',
+    source: 'whatsapp',
+    ageMinutes: 780,
+    note: 'English, tanker supply failure, water works, affects many households',
+  },
+  {
+    text: 'કાલાવડ રોડ પર બસ સ્ટોપનું છાપરું તૂટી ગયું છે, વરસાદમાં ઊભા રહેવાની જગ્યા નથી.',
+    source: 'web',
+    ageMinutes: 5200,
+    note: 'Gujarati script, broken bus shelter, PWD, low urgency',
+  },
+  {
+    text: 'Amare tya na garden ma jhula tuti gaya chhe, chhokra ne vagi jaay evu chhe.',
+    source: 'whatsapp',
+    ageMinutes: 6100,
+    note: 'Romanized Gujarati, broken playground equipment, child safety',
+  },
+  {
+    text: 'Nana Mava road par raat na kutra bahu bhasse chhe ne loko ne bik lage chhe, koi upay karo.',
+    source: 'whatsapp',
+    ageMinutes: 3000,
+    note: 'Stray dogs, health and sanitation, an NGO or municipal call',
+  },
+  {
+    text: 'Yagnik road ni gatar ma dhakkan tuti gayu hatu te repair thai gayu chhe, aabhar.',
+    source: 'whatsapp',
+    ageMinutes: 7000,
+    note: 'A thank-you rather than a complaint. Tests that gratitude is not filed as a fault',
+  },
+  {
+    text: 'ગોંડલ રોડ પર દવાખાના પાસે એમ્બ્યુલન્સ નીકળી શકતી નથી, વાહનો ગમે ત્યાં પાર્ક કરે છે.',
+    source: 'web',
+    ageMinutes: 240,
+    note: 'Gujarati script, parking blocking ambulance access, encroachment, urgent',
+  },
+  {
+    text: 'Kalavad road ni shala pase divas na time e paani nu tanker aave chhe pan pressure bilkul nathi.',
+    source: 'web',
+    ageMinutes: 1500,
+    note: 'Romanized Gujarati, low pressure rather than no supply',
+  },
 ];
