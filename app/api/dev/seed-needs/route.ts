@@ -7,8 +7,8 @@ import { buildNeedFromTriage } from '@/lib/data/needs';
 import { invalidateBoard } from '@/lib/data/board-cache';
 
 export const dynamic = 'force-dynamic';
-// Twenty reports through a local model takes a few minutes.
-export const maxDuration = 900;
+// Twenty reports through a local model takes a few minutes. Max 300s for Vercel Hobby plan.
+export const maxDuration = 300;
 
 /**
  * Seeds the demo workload by actually running it through Gemma.

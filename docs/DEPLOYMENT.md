@@ -119,7 +119,7 @@ curl -X POST "https://your-app.vercel.app/api/dev/seed-needs?reset=1"
 
 **Watch the function timeout.** Seeding twenty reports takes minutes, and
 Vercel's hobby plan caps a function at 60 seconds. The seed route declares
-`maxDuration = 900`, which needs a paid plan to be honoured. If seeding times
+`maxDuration = 300`, which is the maximum allowed on the Vercel Hobby plan. If seeding times
 out, either seed a handful at a time or run the local build for the demo and use
 the hosted URL only to prove the app exists.
 
