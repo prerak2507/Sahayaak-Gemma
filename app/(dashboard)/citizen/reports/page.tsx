@@ -12,23 +12,33 @@ export default function MyReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-    // We fetch where user_phone matches. 
-    // Due to missing index in demo, we can just fetch all and filter in memory if needed, 
-    // but a query with where('user_phone', '==', user.phone) is proper.
-    const q = query(collection(db, 'needs'), where('user_phone', '==', user.phone));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setReports(list);
-      setLoading(false);
-    }, (err) => {
-      console.warn("Failed to fetch reports natively", err);
-      // Fallback
-      setLoading(false);
-    });
+    let active = true;
 
-    return () => unsub();
+    async function loadReports() {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (!active) return;
+        const list: any[] = data.needs || [];
+        const userReports = list.filter((r: any) =>
+          (user?.id && (r.reported_by === user.id || r.user_id === user.id)) ||
+          (user?.phone && (r.user_phone === user.phone || r.reported_by === user.phone)) ||
+          (user?.email && r.reported_by === user.email)
+        );
+        const finalReports = userReports.length > 0 ? userReports : list;
+        finalReports.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setReports(finalReports);
+        setLoading(false);
+      } catch (err) {
+        console.warn("Failed to fetch reports from API:", err);
+        setLoading(false);
+      }
+    }
+
+    loadReports();
+    const interval = setInterval(loadReports, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, [user]);
 
   if (loading) return (

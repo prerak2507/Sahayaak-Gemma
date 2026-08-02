@@ -48,7 +48,7 @@ export function LiveNeedsPreview() {
 
     load();
     // Refresh so a report filed during a demo appears without a reload.
-    const timer = setInterval(load, 60000);
+    const timer = setInterval(load, 5000);
     return () => {
       cancelled = true;
       clearInterval(timer);

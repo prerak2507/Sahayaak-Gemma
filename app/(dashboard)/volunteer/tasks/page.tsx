@@ -20,29 +20,24 @@ export default function VolunteerTasks() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const needsRef = collection(db, 'needs');
-    const q = query(
-      needsRef,
-      where('status', '==', 'verified'),
-      orderBy('urgency_score', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const liveNeeds = scopeToCity(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))) as Need[];
-      setNeeds(liveNeeds.filter(n => n.status === 'verified'));
-      setIsLoading(false);
-      
-      if (snapshot.docChanges().some(change => change.type === 'added')) {
-        toast('New mission available in your sector!', { icon: '📡' });
+    let active = true;
+    const fetchNeeds = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const liveNeeds: Need[] = data.needs || [];
+        setNeeds(liveNeeds);
+        setIsLoading(false);
+      } catch (err) {
+        console.warn('Failed to load volunteer needs from API:', err);
+        setIsLoading(false);
       }
-    }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
-      console.warn('Firestore subscription unavailable:', err?.code || err?.message);
-    });
-
-    return () => unsubscribe();
+    };
+    fetchNeeds();
+    const interval = setInterval(fetchNeeds, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   const handleAction = async (direction: 'left' | 'right') => {

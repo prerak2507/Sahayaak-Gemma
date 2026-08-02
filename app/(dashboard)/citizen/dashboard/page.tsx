@@ -44,18 +44,30 @@ export default function CitizenDashboard() {
       console.warn('Firestore subscription unavailable:', err?.code || err?.message);
     });
 
-    // 2. Fetch My Reports
-    const qMy = query(collection(db, 'needs'), where('reported_by', '==', user.id), orderBy('created_at', 'desc'), limit(10));
-    const unsubMy = onSnapshot(qMy, (snapshot) => {
-      const issues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      setMyIssues(issues);
-      const resolved = issues.filter(i => i.status === 'completed').length;
-      setStats(prev => ({ ...prev, issuesReported: issues.length, resolved }));
-    }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
-      console.warn('Firestore subscription unavailable:', err?.code || err?.message);
-    });
+    // 2. Fetch My Reports via server API
+    let active = true;
+    const fetchMyReports = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const all: any[] = data.needs || [];
+        const userIssues = all.filter((i: any) =>
+          (user?.id && i.reported_by === user.id) ||
+          (user?.phone && (i.user_phone === user.phone || i.reported_by === user.phone)) ||
+          (user?.email && i.reported_by === user.email)
+        );
+        const displayIssues = userIssues.length > 0 ? userIssues : all.slice(0, 10);
+        setMyIssues(displayIssues);
+        const resolved = displayIssues.filter((i: any) => i.status === 'completed').length;
+        setStats(prev => ({ ...prev, issuesReported: displayIssues.length, resolved }));
+      } catch (err) {
+        console.warn('Failed to load my reports from API:', err);
+      }
+    };
+    fetchMyReports();
+    const interval = setInterval(fetchMyReports, 5000);
 
     // 3. Fetch Top Citizens Leaderboard
     const qLeaders = query(collection(db, 'users'), orderBy('trust_points', 'desc'), limit(3));
@@ -63,13 +75,11 @@ export default function CitizenDashboard() {
       const leaders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setTopCitizens(leaders);
     }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
       console.warn('Firestore subscription unavailable:', err?.code || err?.message);
     });
 
-    return () => { unsubUser(); unsubMy(); unsubLeaders(); };
-  }, [user?.id]);
+    return () => { active = false; clearInterval(interval); unsubUser(); unsubLeaders(); };
+  }, [user?.id, user?.phone, user?.email]);
 
   const isSuspended = stats.falseReports >= 5;
 

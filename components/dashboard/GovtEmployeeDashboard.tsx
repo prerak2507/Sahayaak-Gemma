@@ -16,24 +16,27 @@ export default function GovtEmployeeDashboard() {
   const [verificationFeedback, setVerificationFeedback] = useState<{taskId: string, message: string} | null>(null);
 
   useEffect(() => {
-    if (!user || !user.department) return;
-
-    const q = query(
-      collection(db, 'needs'),
-      where('assigned_department', '==', user.department)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      setDepartmentNeeds(tasksData.filter(t => !t.is_archived));
-      setLoading(false);
-    }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
-      console.warn('Firestore subscription unavailable:', err?.code || err?.message);
-    });
-
-    return () => unsubscribe();
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const tasksData: any[] = data.needs || [];
+        const filtered = user?.department
+          ? tasksData.filter((t: any) => t.assigned_department === user.department && !t.is_archived)
+          : tasksData.filter((t: any) => !t.is_archived);
+        setDepartmentNeeds(filtered.length > 0 ? filtered : tasksData);
+        setLoading(false);
+      } catch (err) {
+        console.warn('Failed to load tasks for employee dashboard:', err);
+        setLoading(false);
+      }
+    };
+    load();
+    const interval = setInterval(load, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, [user]);
 
   const handleAcceptTask = async (taskId: string) => {

@@ -15,23 +15,27 @@ export default function GovtWorkerDashboard() {
   const { activeCity } = useGovtStore();
   const [departmentNeeds, setDepartmentNeeds] = useState<any[]>([]);
   
-  // Realtime Firebase Subscription
+  // Fetch needs from server API
   useEffect(() => {
-    if (!user?.department) return;
-    const q = query(
-      collection(db, 'needs'),
-      where('assigned_department', '==', user.department)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const needsData: any[] = [];
-      snapshot.forEach((doc) => needsData.push({ id: doc.id, ...doc.data() }));
-      setDepartmentNeeds(needsData);
-    }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
-      console.warn('Firestore subscription unavailable:', err?.code || err?.message);
-    });
-    return () => unsubscribe();
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const all: any[] = data.needs || [];
+        const filtered = user?.department
+          ? all.filter((n: any) => n.assigned_department === user.department)
+          : all;
+        setDepartmentNeeds(filtered.length > 0 ? filtered : all);
+      } catch (err) {
+        console.warn('Failed to load needs for worker dashboard:', err);
+      }
+    };
+    load();
+    const interval = setInterval(load, 5000);
+    return () => { active = false; clearInterval(interval); };
   }, [user?.department]);
 
   // Derived Metrics

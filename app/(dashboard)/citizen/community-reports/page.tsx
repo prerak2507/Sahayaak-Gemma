@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { upvoteNeed, updateNeed } from '@/lib/data/mutate-need';
 
 export default function CommunityReportsPage() {
   const { user } = useAuthStore();
@@ -29,23 +30,24 @@ export default function CommunityReportsPage() {
       console.warn('Firestore subscription unavailable:', err?.code || err?.message);
     });
 
-    const qComm = query(
-      collection(db, 'needs'), 
-      where('city', '==', 'Rajkot'),
-      orderBy('created_at', 'desc')
-    );
-    
-    const unsubComm = onSnapshot(qComm, (snapshot) => {
-      const issues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      // Filter out user's own reports on the client
-      setCommunityIssues(issues.filter(i => i.reported_by !== user.id));
-    }, (err: any) => {
-      // Expected when the store is local or the rules deny client reads.
-      // Logged rather than thrown: an uncaught listener error blanks the page.
-      console.warn('Firestore subscription unavailable:', err?.code || err?.message);
-    });
+    let active = true;
+    const fetchCommunityIssues = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const issues: any[] = data.needs || [];
+        // Filter out user's own reports on the client
+        setCommunityIssues(issues.filter((i: any) => i.reported_by !== user.id));
+      } catch (err) {
+        console.warn('Failed to load community issues from API:', err);
+      }
+    };
+    fetchCommunityIssues();
+    const interval = setInterval(fetchCommunityIssues, 5000);
 
-    return () => { unsubUser(); unsubComm(); };
+    return () => { active = false; clearInterval(interval); unsubUser(); };
   }, [user?.id]);
 
   const handleUpvote = async (issue: any) => {
@@ -61,17 +63,10 @@ export default function CommunityReportsPage() {
 
     setIsProcessing(true);
     try {
-      const issueRef = doc(db, 'needs', issue.id);
-      const newUpvotes = (issue.upvotes || 0) + 1;
-      
-      await updateDoc(issueRef, {
-        upvotes: increment(1),
-        upvoted_by: arrayUnion(user.id)
-      });
-
+      const { upvotes } = await upvoteNeed(issue.id, user.id);
       toast.success("Upvote recorded!");
 
-      if (newUpvotes === 25 && issue.status === 'reported') {
+      if (upvotes >= 25 && issue.status === 'reported') {
         toast('Community Consensus Reached! AI routing task to City...', { icon: '🤖', duration: 4000 });
         try {
           await fetch('/api/ai/autonomous-dispatch', {
@@ -84,8 +79,6 @@ export default function CommunityReportsPage() {
           console.error("Auto dispatch failed", e);
         }
       }
-
-      await updateDoc(doc(db, 'users', user.id), { trust_points: increment(5) });
     } catch (err) {
       console.error(err);
       toast.error("Failed to upvote.");
@@ -97,9 +90,8 @@ export default function CommunityReportsPage() {
   const handleDevAdd25Upvotes = async (issue: any) => {
     setIsProcessing(true);
     try {
-      const issueRef = doc(db, 'needs', issue.id);
-      await updateDoc(issueRef, { upvotes: 25 });
-      toast.success("Simulated 25 upvotes!");
+      await updateNeed(issue.id, { note: 'Simulated 25 upvotes' });
+      toast.success("Simulated upvote action!");
       toast('Community Consensus Reached! AI routing task to City...', { icon: '🤖', duration: 4000 });
       await fetch('/api/ai/autonomous-dispatch', {
         method: 'POST',
@@ -117,14 +109,8 @@ export default function CommunityReportsPage() {
   const handleDevMarkInvalid = async (issue: any) => {
     setIsProcessing(true);
     try {
-      if (issue.reported_by) {
-        await updateDoc(doc(db, 'users', issue.reported_by), {
-          trust_points: increment(-20),
-          false_reports_count: increment(1)
-        });
-        toast.error(`Reporter penalized for invalid issue!`);
-      }
-      await updateDoc(doc(db, 'needs', issue.id), { status: 'closed', resolution_note: 'Marked invalid by community' });
+      await updateNeed(issue.id, { status: 'closed', resolution_note: 'Marked invalid by community' });
+      toast.success('Marked report as invalid.');
     } catch (err) {
       console.error(err);
     } finally {

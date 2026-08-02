@@ -75,7 +75,7 @@ export default function NeedsMap() {
 
     const load = async () => {
       try {
-        const res = await fetch('/api/needs?assignment=government&limit=300');
+        const res = await fetch('/api/needs?assignment=all&limit=300');
         if (!res.ok) throw new Error(`needs returned ${res.status}`);
         const { needs: rows } = await res.json();
         if (!cancelled) setNeeds(rows ?? []);
@@ -90,7 +90,7 @@ export default function NeedsMap() {
     load();
     // Refresh periodically so a report filed during a demo appears without a
     // reload. Cheap: one scoped read.
-    const timer = setInterval(load, 60000);
+    const timer = setInterval(load, 5000);
     return () => {
       cancelled = true;
       clearInterval(timer);

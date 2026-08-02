@@ -36,36 +36,31 @@ export default function NgoTasks() {
       console.warn('Firestore subscription unavailable:', err?.code || err?.message);
     });
 
-    const needsRef = collection(db, 'needs');
-    const q = query(needsRef, where('status', '!=', 'closed'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        setLocalNeeds([
-          { id: 'kn-1', title: '50 Water bottles needed', category: 'water_sanitation', urgency_score: 8.2, status: 'reported', city: 'Delhi', district: 'West', created_at: new Date().toISOString() },
-          { id: 'kn-2', title: 'O+ Blood required at Civil', category: 'medical', urgency_score: 9.5, status: 'verified', city: 'Delhi', district: 'Central', created_at: new Date().toISOString() },
-          { id: 'kn-3', title: 'Food distribution drive', category: 'food', urgency_score: 7.1, status: 'in_progress', city: 'Delhi', district: 'Saurashtra', created_at: new Date().toISOString() },
-          { id: 'kn-4', title: 'Mental health counseling', category: 'mental_health', urgency_score: 4.5, status: 'completed', city: 'Delhi', district: 'South', created_at: new Date().toISOString() },
-          { id: 'kn-5', title: '10 Field Engineers for debris clearing', category: 'disaster_relief', urgency_score: 9.1, status: 'verified', city: 'Ahmedabad', district: 'Riverfront', created_at: new Date().toISOString() },
-          { id: 'kn-6', title: 'Elderly checkup rounds', category: 'elderly_care', urgency_score: 6.2, status: 'reported', city: 'Surat', district: 'Adajan', created_at: new Date().toISOString() }
-        ] as any[]);
-      } else {
-        const allNeeds = scopeToCity(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))) as any[];
-        // Filter out government needs to show only NGO-assigned needs and filter out unverified bulk-imported needs
-        setLocalNeeds(allNeeds.filter(n => 
-          n.assignment_type !== 'government' && 
-          !n.pending_verification && 
-          n.assignment_type !== 'pending_verification'
-        ) as Need[]);
+    let active = true;
+    const fetchNeeds = async () => {
+      try {
+        const res = await fetch('/api/needs?assignment=all&limit=300');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!active) return;
+        const allNeeds: any[] = data.needs || [];
+        const ngoNeeds = allNeeds.filter((n: any) =>
+          n.assignment_type !== 'government' && !n.pending_verification
+        );
+        setLocalNeeds(ngoNeeds.length > 0 ? ngoNeeds : allNeeds);
+        setLoading(false);
+      } catch (err) {
+        console.warn('Failed to load NGO needs from API:', err);
+        setLoading(false);
       }
-      setLoading(false);
-    }, (error) => {
-      console.error('Ngo tasks sync error:', error);
-      setLoading(false);
-    });
+    };
+
+    fetchNeeds();
+    const interval = setInterval(fetchNeeds, 5000);
 
     return () => {
-      unsubscribe();
+      active = false;
+      clearInterval(interval);
       unsubscribeVolunteers();
     };
   }, []);
