@@ -88,7 +88,7 @@ export default function Page() {
   } | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
 
-  const currentWards = cityWards[activeCity === 'rajkot' ? 'Rajkot' : 'Delhi'] || cityWards['Delhi'];
+  const currentWards = cityWards[activeCity === 'rajkot' ? 'Rajkot' : 'Delhi'] || cityWards['Rajkot'];
 
   const [editingWard, setEditingWard] = useState<any | null>(null);
   const [editOpen, setEditOpen] = useState(0);
@@ -448,12 +448,7 @@ export default function Page() {
                   onChange={(e) => setActiveCity(e.target.value)}
                   className="bg-slate-900 border border-slate-800 text-blue-400 font-extrabold text-xs px-4 py-2.5 rounded-xl appearance-none pr-8 cursor-pointer opacity-100 hover:border-blue-500/50 transition-colors"
                 >
-                  <option value="ahmedabad">Ahmedabad Hub</option>
-                  <option value="delhi">Delhi City</option>
-                  <option value="mumbai">Mumbai BMC</option>
-                  <option value="rajkot">Rajkot RMC</option>
-                  <option value="surat">Surat Hub</option>
-                  <option value="vadodara">Vadodara Hub</option>
+                  <option value="rajkot">Rajkot Municipal Corporation</option>
                 </select>
                 <ChevronDown size={14} className="text-blue-400 absolute right-3 top-3.5 pointer-events-none" />
               </div>

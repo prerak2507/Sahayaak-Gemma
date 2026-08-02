@@ -82,6 +82,7 @@ const GEMMA_MODEL = process.env.GEMMA_LOCAL_MODEL || 'gemma4:e4b-it-qat';
 const GEMMA_CLOUD_ORIGIN = (process.env.GEMMA_CLOUD_ORIGIN || 'https://ollama.com').replace(/\/$/, '');
 const GEMMA_CLOUD_MODEL = process.env.GEMMA_CLOUD_MODEL || 'gemma4:cloud';
 const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const GEMMA_TIMEOUT_MS = Number(process.env.GEMMA_TIMEOUT_MS) || 120000;
 
 function gemmaHosts() {
   const hosts = [{ origin: GEMMA_ORIGIN, model: GEMMA_MODEL, kind: 'local' }];
@@ -106,15 +107,23 @@ async function generateContentWithRetry(prompt, mediaData = null, retries = 3) {
     message.images = [String(mediaData.data).replace(/^data:[^;]+;base64,/, '')];
   }
 
+  // The bot follows the same rule as the app: local first, cloud only when
+  // local is missing or slow. A report from a resident should be read on the
+  // corporation's own machine.
+  const hosts = await orderedHosts();
   let lastError;
 
-  for (const host of gemmaHosts()) {
+  for (const host of hosts) {
     let delay = 2000;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), GEMMA_TIMEOUT_MS);
+
         const res = await fetch(`${host.origin}/api/chat`, {
           method: 'POST',
+          signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
             ...(host.apiKey ? { Authorization: `Bearer ${host.apiKey}` } : {}),
@@ -126,22 +135,22 @@ async function generateContentWithRetry(prompt, mediaData = null, retries = 3) {
             format: 'json',
             stream: false,
             think: false,
-            options: { temperature: 0.2 },
+            options: { temperature: 0.2, num_ctx: Number(process.env.GEMMA_NUM_CTX) || 8192 },
           }),
-        });
+        }).finally(() => clearTimeout(timer));
 
         if (!res.ok) {
-          throw new Error(`${host.kind} host returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+          throw new Error(`${host.kind} returned ${res.status}: ${(await res.text()).slice(0, 160)}`);
         }
 
         const data = await res.json();
-        if (data.error) throw new Error(`${host.kind} host error: ${data.error}`);
+        if (data.error) throw new Error(`${host.kind} error: ${data.error}`);
 
         const content = (data.message && data.message.content) || '';
         return { response: { text: () => content } };
       } catch (err) {
         lastError = err;
-        console.error(`[GEMMA] ${host.kind} attempt ${attempt}/${retries} failed: ${err.message}`);
+        console.error(`[GEMMA] ${host.kind} attempt ${attempt}/${retries}: ${err.message}`);
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, delay));
           delay *= 2;
@@ -149,7 +158,7 @@ async function generateContentWithRetry(prompt, mediaData = null, retries = 3) {
       }
     }
 
-    console.warn(`[GEMMA] giving up on ${host.kind} host, trying next`);
+    console.warn(`[GEMMA] giving up on the ${host.kind} host, trying the next`);
   }
 
   throw new Error(
@@ -157,6 +166,37 @@ async function generateContentWithRetry(prompt, mediaData = null, retries = 3) {
       lastError ? lastError.message : 'unknown'
     }`
   );
+}
+
+/**
+ * Hosts in the order to try them, skipping a local daemon that is not there.
+ *
+ * Checking reachability first means a machine without Ollama does not sit
+ * waiting on a connection that will never open before reaching the cloud.
+ */
+async function orderedHosts() {
+  const all = gemmaHosts();
+  const local = all.find((h) => h.kind === 'local');
+  const rest = all.filter((h) => h.kind !== 'local');
+
+  if (!local) return rest;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${local.origin}/api/tags`, { signal: controller.signal }).finally(() =>
+      clearTimeout(timer)
+    );
+    if (res.ok) return [local, ...rest];
+  } catch {
+    // Not there.
+  }
+
+  if (rest.length > 0) {
+    console.warn('[GEMMA] local Ollama is not reachable, using the cloud host');
+    return rest;
+  }
+  return [local];
 }
 
 

@@ -47,7 +47,7 @@ export default function Page() {
 
   // Aggregate ward data for charts
   const chartData = useMemo(() => {
-    const wards = cityWards['Delhi'] || [];
+    const wards = cityWards['Rajkot'] || [];
     return wards.map(w => ({
       name: w.name,
       SLA_Compliance: w.sla,
@@ -58,7 +58,7 @@ export default function Page() {
   }, [cityWards]);
 
   const globalStats = useMemo(() => {
-    const wards = cityWards['Delhi'] || [];
+    const wards = cityWards['Rajkot'] || [];
     const totalOpen = wards.reduce((sum, w) => sum + w.open, 0);
     const avgSla = wards.reduce((sum, w) => sum + w.sla, 0) / (wards.length || 1);
     const totalCritical = wards.reduce((sum, w) => sum + w.red, 0);

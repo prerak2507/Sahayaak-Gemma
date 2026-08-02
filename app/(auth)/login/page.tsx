@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   const getCorpName = () => {
     if (activeCity === 'rajkot') return 'RMC';
-    if (activeCity === 'delhi') return 'City';
+    if (activeCity === 'rajkot') return 'RMC';
     return 'Global Mode (City)';
   };
   const corpName = getCorpName();

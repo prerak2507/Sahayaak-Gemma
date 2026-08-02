@@ -20,11 +20,11 @@ export default function Page() {
   });
 
   useEffect(() => {
+    // One corporation, one city. This used to list Delhi, Ahmedabad, Surat and
+    // Vadodara with invented NGO and volunteer counts, none of which the
+    // platform had ever served.
     const demoCities = [
-      { id: 'd1', name: 'Delhi', ngoCount: 42, volunteerCount: 1250, region: 'Gujarat', status: 'active', type: 'Core Hub' },
-      { id: 'd2', name: 'Ahmedabad', ngoCount: 86, volunteerCount: 3400, region: 'Gujarat', status: 'active', type: 'Mega Node' },
-      { id: 'd3', name: 'Surat', ngoCount: 54, volunteerCount: 2100, region: 'Gujarat', status: 'active', type: 'Industrial Node' },
-      { id: 'd4', name: 'Vadodara', ngoCount: 31, volunteerCount: 950, region: 'Gujarat', status: 'active', type: 'Cultural Node' }
+      { id: 'rajkot', name: 'Rajkot', ngoCount: 0, volunteerCount: 0, region: 'Gujarat', status: 'active', type: 'Municipal Corporation' }
     ];
 
     // Connectivity Timeout: Fallback to demo data if Firestore is unreachable after 2 seconds
@@ -312,7 +312,6 @@ export default function Page() {
                 >
                   <option>Gujarat</option>
                   <option>Maharashtra</option>
-                  <option>Delhi</option>
                   <option>Karnataka</option>
                 </select>
               </div>

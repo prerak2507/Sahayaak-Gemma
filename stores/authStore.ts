@@ -18,7 +18,7 @@ const DEMO_USERS: Record<string, Profile> = {
   citizen: {
     id: 'demo-citizen-001',
     phone: '+919876543222',
-    email: 'citizen@delhi.gov.in',
+    email: 'citizen@rajkot.gov.in',
     full_name: 'Rahul Sharma',
     avatar_url: null,
     profile_image: 'https://i.pravatar.cc/150?u=demo-citizen-001',
@@ -59,7 +59,7 @@ const DEMO_USERS: Record<string, Profile> = {
   platform_admin: {
     id: 'demo-admin-001',
     phone: '+919876543212',
-    email: 'vikram@sahaayak.gov.in',
+    email: 'vikram@rmc.gov.in',
     full_name: 'Vikram Singh',
     avatar_url: null,
     profile_image: 'https://i.pravatar.cc/150?u=demo-admin-001',

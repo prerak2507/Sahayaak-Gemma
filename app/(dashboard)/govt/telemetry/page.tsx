@@ -37,7 +37,7 @@ export default function TelemetryPage() {
 
   const employees = useMemo(() => {
     if (!deptId) return [];
-    const cityKey = activeCity ? activeCity.toLowerCase() : 'delhi';
+    const cityKey = activeCity ? activeCity.toLowerCase() : 'rajkot';
     const deptEmployees = ALL_DEPARTMENT_EMPLOYEES[cityKey]?.[deptId] || [];
     
     // Check if we need to include the HOD in the map
@@ -58,11 +58,11 @@ export default function TelemetryPage() {
     return allPersonnel;
   }, [deptId, activeCity]);
 
-  const cityKey = activeCity ? activeCity.charAt(0).toUpperCase() + activeCity.slice(1).toLowerCase() : 'Delhi';
+  const cityKey = activeCity ? activeCity.charAt(0).toUpperCase() + activeCity.slice(1).toLowerCase() : 'Rajkot';
   const cityCenter = CITY_COORDINATES[cityKey] || [28.6139, 77.2090];
   
   const deptName = useMemo(() => {
-    const cKey = activeCity ? activeCity.toLowerCase() : 'delhi';
+    const cKey = activeCity ? activeCity.toLowerCase() : 'rajkot';
     const deptConfig = ALL_DEPARTMENTS[cKey]?.find((d: any) => d.id === deptId);
     return deptConfig ? deptConfig.name : 'Unknown Department';
   }, [deptId, activeCity]);

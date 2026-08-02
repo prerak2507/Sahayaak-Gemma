@@ -50,7 +50,7 @@ export default function Page() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                   <MapPin size={10} /> HQ Location
                 </label>
-                <input type="text" defaultValue="Delhi Central Hub" className="input-minimal text-sm font-medium p-0 border-none bg-transparent focus:ring-0 text-slate-600" />
+                <input type="text" defaultValue="Rajkot Municipal Corporation" className="input-minimal text-sm font-medium p-0 border-none bg-transparent focus:ring-0 text-slate-600" />
               </div>
             </div>
           </div>

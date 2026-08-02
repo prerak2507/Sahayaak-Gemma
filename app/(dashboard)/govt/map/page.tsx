@@ -327,7 +327,7 @@ export default function Page() {
                 <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{incident.description}</p>
                 
                 <div className="flex items-center justify-between text-[7.5px] font-mono text-slate-500 border-t border-slate-900 pt-1.5 mt-1">
-                  <span className="flex items-center gap-1">📍 {incident.landmark || 'New Delhi'}</span>
+                  <span className="flex items-center gap-1">📍 {incident.landmark || 'Rajkot'}</span>
                   {hasSecondary && (
                     <span className="text-[6.5px] font-black text-amber-450 bg-amber-950/40 px-1 py-0.2 rounded border border-amber-900/30">
                       ⚠️ DUAL FIELD
@@ -426,7 +426,7 @@ export default function Page() {
               <svg className="w-full h-full opacity-60 text-slate-700" viewBox="0 0 100 100" fill="currentColor">
                  {/* High-fidelity vector outlined outline shape of Indian borders */}
                  <path d="M45,10 C50,12 52,18 55,20 C58,22 62,25 65,28 C68,30 72,32 75,35 C78,38 80,45 78,50 C76,55 72,58 70,62 C68,66 65,72 60,75 C55,78 50,82 48,88 C46,92 45,95 44,98 C42,95 40,90 38,85 C36,80 34,75 32,70 C30,65 28,62 26,58 C24,54 20,50 18,48 C16,46 12,45 10,43 L12,40 C15,38 20,38 24,35 C28,32 30,28 32,25 C34,22 38,18 40,15 Z" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-                 {/* Pulsing red beacon indicator positioned on New Delhi (North-Central) */}
+                 {/* Pulsing red beacon over the Rajkot city centre */}
                  <circle cx="46" cy="25" r="4.5" className="fill-emerald-400 animate-ping" />
                  <circle cx="46" cy="25" r="1.5" className="fill-emerald-500" />
               </svg>
@@ -550,7 +550,7 @@ export default function Page() {
 
           {/* Coordinates HUD Display */}
           <div className="absolute top-4 left-4 font-mono text-[8px] text-slate-500 space-y-1 z-10 pointer-events-none">
-             <p>NEW DELHI CENTRAL GEODETIC BOUNDS: ACTIVE</p>
+             <p>RAJKOT MUNICIPAL BOUNDS: ACTIVE</p>
              <p>GRID: DELHI_CITY_VECTOR_OK</p>
           </div>
           <div className="absolute bottom-4 right-4 font-mono text-[8px] text-slate-500 z-10 pointer-events-none">

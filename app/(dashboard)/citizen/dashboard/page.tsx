@@ -97,7 +97,7 @@ export default function CitizenDashboard() {
               )}
             </div>
             <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-              <MapPin size={12} /> Delhi NCR | UID: **** **** 1234
+              <MapPin size={12} /> Rajkot | UID: **** **** 1234
             </p>
           </div>
         </div>

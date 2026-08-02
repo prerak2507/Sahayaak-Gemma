@@ -181,7 +181,7 @@ export default function AboutPage() {
                   Why Grassroots Efforts Stall
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                  When a civic bottleneck or regional crisis occurs (like monsoon waterlogging at New Delhi's Minto Bridge, toxic frothing on the Yamuna, or severe AQI particulate spikes), public response fractures into two distinct, disconnected vectors:
+                  When a civic problem hits Rajkot, monsoon water standing in the low-lying wards, a sewer main backing up on Gondal Road, a stretch of street lights out on University Road, the response splits into two disconnected halves:
                 </p>
               </div>
 
@@ -519,7 +519,7 @@ export default function AboutPage() {
                   <span className="text-[8px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider flex items-center gap-1">
                     <Sparkles size={9} className="text-emerald-600 animate-pulse" /> AI & GIS Sovereign Paradigm
                   </span>
-                  <span className="text-[8px] font-mono text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">New Delhi Ready</span>
+                  <span className="text-[8px] font-mono text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">Rajkot Ready</span>
                 </div>
                 <h3 className="text-lg font-black font-mukta text-slate-900 leading-tight">Sahaayak Operations Suite</h3>
                 <p className="text-[11.5px] text-slate-500 leading-relaxed font-medium">

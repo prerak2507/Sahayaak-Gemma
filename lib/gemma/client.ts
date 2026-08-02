@@ -178,36 +178,134 @@ function isTransient(message: string): boolean {
   );
 }
 
-export async function gemmaChat(req: GemmaRequest): Promise<GemmaResult> {
-  const hosts = hostChain();
-  const attempts: string[] = [];
+async function runHost(host: GemmaHost, req: GemmaRequest, attempts: string[]): Promise<GemmaResult> {
+  let lastError: unknown;
 
-  for (const host of hosts) {
-    for (let attempt = 1; attempt <= RETRIES_PER_HOST; attempt++) {
-      try {
-        return await callHost(host, req);
-      } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error);
-        attempts.push(`${host.kind} (${host.model}) attempt ${attempt}: ${detail}`);
+  for (let attempt = 1; attempt <= RETRIES_PER_HOST; attempt++) {
+    try {
+      return await callHost(host, req);
+    } catch (error) {
+      lastError = error;
+      const detail = error instanceof Error ? error.message : String(error);
+      attempts.push(`${host.kind} (${host.model}) attempt ${attempt}: ${detail}`);
 
-        const worthRetrying = isTransient(detail) && attempt < RETRIES_PER_HOST;
-        if (!worthRetrying) {
-          console.warn(`[gemma] ${host.kind} host failed, falling through:`, detail);
-          break;
-        }
+      if (!isTransient(detail) || attempt === RETRIES_PER_HOST) break;
 
-        // The model has to load back into VRAM after a crash, so give it room.
-        const backoffMs = 3000 * attempt;
-        console.warn(
-          `[gemma] ${host.kind} host returned a transient failure, retrying in ${backoffMs}ms:`,
-          detail
-        );
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
-      }
+      // The model has to load back into VRAM after a crash, so give it room.
+      const backoffMs = 3000 * attempt;
+      console.warn(`[gemma] ${host.kind} transient failure, retrying in ${backoffMs}ms:`, detail);
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
     }
   }
 
-  throw new GemmaUnavailableError(attempts);
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+/**
+ * Is the local daemon there at all?
+ *
+ * Cached briefly, because asking on every call would add a round trip to each
+ * one. Two seconds is long enough for a daemon on the same machine and short
+ * enough that a missing one costs nothing.
+ */
+let localReachableUntil = 0;
+let localReachable = false;
+
+async function isLocalUp(origin: string): Promise<boolean> {
+  if (Date.now() < localReachableUntil) return localReachable;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${origin}/api/tags`, { signal: controller.signal }).finally(() =>
+      clearTimeout(timer)
+    );
+    localReachable = res.ok;
+  } catch {
+    localReachable = false;
+  }
+
+  localReachableUntil = Date.now() + (localReachable ? 30_000 : 10_000);
+  return localReachable;
+}
+
+/**
+ * Runs a completion, preferring the local model.
+ *
+ * The order matters and so does the timing:
+ *
+ *  - **Local first, always.** A resident's report should be read on the
+ *    corporation's own machine, not sent to somebody else's.
+ *  - **Skip local quickly when it is not there.** A two second reachability
+ *    check means a machine with no Ollama does not sit waiting for a connection
+ *    that will never open.
+ *  - **Hedge when local is slow.** The first call after Ollama starts spends
+ *    about seventy seconds loading weights into VRAM. Rather than make a
+ *    resident wait, the cloud host is started alongside once local has taken
+ *    longer than GEMMA_HEDGE_MS, and whichever answers first wins. Local
+ *    usually still wins on the second call onward, which is the common case.
+ *
+ * Throws GemmaUnavailableError when nothing answers, so callers degrade
+ * deliberately rather than getting a silent empty string.
+ */
+export async function gemmaChat(req: GemmaRequest): Promise<GemmaResult> {
+  const chain = hostChain();
+  const attempts: string[] = [];
+
+  const local = chain.find((h) => h.kind === 'local');
+  const cloud = chain.find((h) => h.kind === 'cloud');
+
+  // No local configured, or it is not answering: go straight to the cloud.
+  const localUp = local ? await isLocalUp(local.origin) : false;
+
+  if (!localUp) {
+    if (local) attempts.push(`local (${local.model}): not reachable, skipped`);
+    if (!cloud) throw new GemmaUnavailableError(attempts);
+    return runHost(cloud, req, attempts).catch(() => {
+      throw new GemmaUnavailableError(attempts);
+    });
+  }
+
+  // Local only.
+  if (!cloud) {
+    return runHost(local!, req, attempts).catch(() => {
+      throw new GemmaUnavailableError(attempts);
+    });
+  }
+
+  // Both available: run local, and hedge to cloud if it drags.
+  const hedgeMs = Number(process.env.GEMMA_HEDGE_MS) || 20_000;
+
+  const localCall = runHost(local!, req, attempts);
+  let localFailed = false;
+  localCall.catch(() => {
+    localFailed = true;
+  });
+
+  const hedged = await Promise.race([
+    localCall.then((r) => ({ kind: 'result' as const, r })).catch(() => ({ kind: 'failed' as const })),
+    new Promise<{ kind: 'timeout' }>((resolve) =>
+      setTimeout(() => resolve({ kind: 'timeout' }), hedgeMs)
+    ),
+  ]);
+
+  if (hedged.kind === 'result') return hedged.r;
+
+  if (hedged.kind === 'timeout') {
+    console.warn(`[gemma] local still working after ${hedgeMs}ms, starting cloud alongside`);
+  }
+
+  const cloudCall = runHost(cloud, req, attempts);
+
+  // Whichever finishes first, as long as it finishes. If local already failed,
+  // this is simply the cloud call.
+  try {
+    return await (localFailed
+      ? cloudCall
+      : Promise.any([localCall, cloudCall]));
+  } catch {
+    throw new GemmaUnavailableError(attempts);
+  }
 }
 
 /** Marks a deterministic, non-model result so it can never be mistaken for inference. */

@@ -70,6 +70,17 @@ function seedId(prefix: string, index: number): string {
 }
 
 /**
+ * Bump when the fixture changes.
+ *
+ * A serverless instance can keep /tmp across deployments, so it may still hold
+ * a board written by an older build, with different ids. Reads from that
+ * instance look fine, and writes addressed to ids from a newer instance return
+ * 404. Stamping the seed and replacing anything that does not match forces
+ * every instance onto the same board.
+ */
+const SEED_VERSION = 3;
+
+/**
  * Seed content for a collection that has never been written.
  *
  * The reports fixture is the output of a real Gemma run, committed so a cold
@@ -85,13 +96,24 @@ async function fixtureFor(collection: string): Promise<StoredDoc[]> {
       // backlog rather than a batch stamped at one instant.
       const ageMinutes = 5 + Math.round((i / Math.max(rows.length - 1, 1)) * 2800);
       const at = new Date(now - ageMinutes * 60000).toISOString();
-      return { id: seedId('need', i), ...row, created_at: at, updated_at: at, seed_mode: 'prebuilt' };
+      return {
+        id: seedId('need', i),
+        ...row,
+        created_at: at,
+        updated_at: at,
+        seed_mode: 'prebuilt',
+        seed_version: SEED_VERSION,
+      };
     });
   }
 
   if (collection === 'volunteers') {
     const { DEMO_VOLUNTEERS, buildVolunteer } = await import('@/lib/data/volunteers');
-    return DEMO_VOLUNTEERS.map((v, i) => ({ id: seedId('vol', i), ...buildVolunteer(v) }));
+    return DEMO_VOLUNTEERS.map((v, i) => ({
+      id: seedId('vol', i),
+      ...buildVolunteer(v),
+      seed_version: SEED_VERSION,
+    }));
   }
 
   return [];
@@ -125,15 +147,21 @@ async function loadCollection(collection: string): Promise<StoredDoc[]> {
       // that instance while reads from a fresh instance looked fine. Merging
       // the fixture in when its rows are absent makes any instance serve the
       // same board.
-      const needsSeed =
-        (IS_SERVERLESS || process.env.STORE_AUTOSEED === 'true') &&
-        !loaded.some((r) => (r as any).seed_mode === 'prebuilt');
+      const autoSeeds = IS_SERVERLESS || process.env.STORE_AUTOSEED === 'true';
+      const current = loaded.filter((r) => (r as any).seed_version === SEED_VERSION);
+      const stale = loaded.filter(
+        (r) => (r as any).seed_mode === 'prebuilt' && (r as any).seed_version !== SEED_VERSION
+      );
+      const userFiled = loaded.filter((r) => (r as any).seed_mode !== 'prebuilt');
 
-      if (needsSeed) {
+      if (autoSeeds && current.length === 0) {
         const seeded = await fixtureFor(collection);
         if (seeded.length > 0) {
-          const have = new Set(loaded.map((r) => r.id));
-          cache[collection] = [...seeded.filter((r) => !have.has(r.id)), ...loaded];
+          // Drop superseded seed rows, keep anything a person actually filed.
+          cache[collection] = [...seeded, ...userFiled];
+          if (stale.length > 0) {
+            console.log(`[store] replaced ${stale.length} rows from an older seed`);
+          }
           await persist(collection);
           return cache[collection];
         }

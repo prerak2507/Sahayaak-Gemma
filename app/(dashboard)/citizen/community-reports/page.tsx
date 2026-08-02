@@ -31,7 +31,7 @@ export default function CommunityReportsPage() {
 
     const qComm = query(
       collection(db, 'needs'), 
-      where('city', '==', 'New Delhi'),
+      where('city', '==', 'Rajkot'),
       orderBy('created_at', 'desc')
     );
     
