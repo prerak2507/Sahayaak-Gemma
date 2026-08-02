@@ -22,8 +22,17 @@
  * deployment would use.
  */
 
-import { firestoreBackend } from './firestore-backend';
 import { localBackend } from './local-backend';
+
+// The Firestore backend is required lazily. Importing it at module scope pulls
+// in firebase-admin, and an unconfigured admin SDK used to throw during Next's
+// page-data collection, failing the production build on any host without a
+// service account. Requiring it only when selected keeps a local-store
+// deployment free of Firebase entirely.
+function loadFirestoreBackend(): StoreBackend {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('./firestore-backend') as typeof import('./firestore-backend')).firestoreBackend();
+}
 
 export interface StoredDoc {
   id: string;
@@ -72,7 +81,7 @@ export function store(): StoreBackend {
     resolved = localBackend();
     console.log('[store] using the local file backend (.data/). No Firebase required.');
   } else {
-    resolved = firestoreBackend();
+    resolved = loadFirestoreBackend();
     console.log('[store] using Firestore.');
   }
 

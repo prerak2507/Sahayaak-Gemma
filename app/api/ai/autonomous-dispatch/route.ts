@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
+import { store } from '@/lib/store';
+import { invalidateBoard } from '@/lib/data/board-cache';
 import { chooseVolunteer } from '@/lib/gemma/analytics';
 import { gemmaErrorResponse } from '@/lib/gemma/route-helpers';
 
@@ -34,36 +34,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const needSnap = await getDocs(query(collection(db, 'needs'), where('id', '==', needId)));
-    if (needSnap.empty) {
+    const need = await store().get('needs', needId);
+    if (!need) {
       return NextResponse.json({ error: 'Need not found' }, { status: 404 });
     }
-    const needDoc = needSnap.docs[0];
-    const need = { id: needDoc.id, ...needDoc.data() };
 
-    const volSnap = await getDocs(
-      query(collection(db, 'users'), where('role', '==', 'volunteer'), where('status', '==', 'active'))
-    );
+    const roster = await store().list('volunteers');
+    const openTasks = await store().list('tasks');
 
-    const available = [];
-    for (const d of volSnap.docs) {
-      const openTasks = await getDocs(
-        query(
-          collection(db, 'tasks'),
-          where('volunteer_id', '==', d.id),
-          where('status', 'in', ['assigned', 'in_progress'])
-        )
-      );
-      if (openTasks.size < MAX_OPEN_TASKS) {
-        const data = d.data();
-        available.push({
-          id: d.id,
-          name: data.full_name || data.name,
-          skills: data.skills ?? [],
-          currentLoad: openTasks.size,
-        });
-      }
-    }
+    const available = roster
+      .filter((v: any) => v.status === 'available' || v.status === 'busy')
+      .map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        skills: v.skills ?? [],
+        currentLoad: openTasks.filter(
+          (t: any) => t.volunteer_id === v.id && ['assigned', 'in_progress'].includes(t.status)
+        ).length,
+      }))
+      .filter((v) => v.currentLoad < MAX_OPEN_TASKS);
 
     if (available.length === 0) {
       return NextResponse.json({
@@ -91,7 +80,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const taskRef = await addDoc(collection(db, 'tasks'), {
+    const taskId = await store().add('tasks', {
       need_id: needId,
       volunteer_id: decision.volunteer_id,
       status: 'assigned',
@@ -102,11 +91,15 @@ export async function POST(request: Request) {
       is_autonomous: true,
     });
 
-    await updateDoc(doc(db, 'needs', needDoc.id), { status: 'assigned' });
+    await store().update('needs', needId, {
+      status: 'assigned',
+      updated_at: new Date().toISOString(),
+    });
+    invalidateBoard();
 
     return NextResponse.json({
       success: true,
-      taskId: taskRef.id,
+      taskId,
       volunteerId: decision.volunteer_id,
       reason: decision.reason,
       _meta: decision._meta,

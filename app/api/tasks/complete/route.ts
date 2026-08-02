@@ -1,67 +1,93 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, updateDoc, addDoc, collection, increment } from 'firebase/firestore';
+import { store } from '@/lib/store';
+import { invalidateBoard } from '@/lib/data/board-cache';
 
+export const dynamic = 'force-dynamic';
+
+/**
+ * Closes a task and the report behind it.
+ *
+ * Rewritten to go through the store. This route previously imported the
+ * *client* Firebase config from a server handler, which meant the browser SDK
+ * was being constructed during the build. When Firebase was not configured that
+ * threw at import time and failed the whole production build.
+ *
+ * It also awards the reporter trust points, which is the only reason the
+ * platform asks residents to identify themselves at all: a report that gets
+ * fixed should be worth something to the person who filed it.
+ */
 export async function POST(request: Request) {
+  let body: { taskId?: string; needId?: string; note?: string };
+
   try {
-    const { taskId, needId } = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be JSON' }, { status: 400 });
+  }
 
-    if (!taskId || !needId) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+  if (!body.needId) {
+    return NextResponse.json({ error: 'needId is required' }, { status: 400 });
+  }
+
+  try {
+    const need = await store().get('needs', body.needId);
+    if (!need) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
-    // 1. Get the need to find the reporter and severity
-    const needRef = doc(db, 'needs', needId);
-    const needSnap = await getDoc(needRef);
-    if (!needSnap.exists()) {
-      return NextResponse.json({ error: 'Need not found' }, { status: 404 });
-    }
-    const needData = needSnap.data();
+    const now = new Date().toISOString();
+    const history = Array.isArray((need as any).history) ? [...(need as any).history] : [];
+    history.push({
+      at: now,
+      action: 'resolution',
+      detail: body.note || 'Marked complete by the assigned crew',
+      by: (need as any).assigned_worker_name || 'field crew',
+    });
 
-    // 2. Update Task & Need Status
-    await updateDoc(doc(db, 'tasks', taskId), { status: 'completed', completed_at: new Date().toISOString() });
-    await updateDoc(needRef, { status: 'completed', resolved_at: new Date().toISOString() });
+    await store().update('needs', body.needId, {
+      status: 'completed',
+      completed_at: now,
+      updated_at: now,
+      history,
+    });
 
-    // 3. Notify the Reporter
-    const reporterId = needData.reported_by;
-    if (reporterId && reporterId !== 'anonymous') {
-      await addDoc(collection(db, 'notifications'), {
-        user_id: reporterId,
-        title: 'Report Resolved! 🎉',
-        message: `Your report "${needData.title}" has been fixed by a municipal worker. Thank you for your civic duty!`,
-        read: false,
-        created_at: new Date().toISOString(),
-        type: 'resolution'
-      });
-
-      // 4. Gamification: Calculate and Award Trust Points
-      // Base points + multiplier based on AI severity rating
-      const severity = needData.severity_rating || needData.urgency_score || 5;
-      const pointsEarned = Math.floor(severity * 15); // e.g., severity 8 = 120 points
-
-      const userRef = doc(db, 'users', reporterId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const currentData = userSnap.data();
-        let newStreak = (currentData.streak || 0) + 1;
-        
-        // Example badge logic: Unlock a badge if streak hits 5
-        const badges = currentData.badges || [];
-        if (newStreak >= 5 && !badges.includes('Civic Guardian')) {
-          badges.push('Civic Guardian');
-        }
-
-        await updateDoc(userRef, {
-          trust_score: increment(pointsEarned),
-          streak: newStreak,
-          badges: badges
-        });
+    if (body.taskId) {
+      const task = await store().get('tasks', body.taskId);
+      if (task) {
+        await store().update('tasks', body.taskId, { status: 'completed', completed_at: now });
       }
     }
 
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error completing task:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    invalidateBoard();
+
+    // Tell the resident, and credit them. Points scale with how serious the
+    // problem turned out to be, so reporting a live wire is worth more than
+    // reporting faded paint.
+    const reporter = (need as any).reported_by;
+    let pointsAwarded = 0;
+
+    if (reporter && reporter !== 'anonymous') {
+      const severity = (need as any).urgency_score || 5;
+      pointsAwarded = Math.floor(severity * 15);
+
+      await store().add('notifications', {
+        user_id: reporter,
+        title: 'Your report was fixed',
+        message: `"${(need as any).title}" has been resolved. Thank you for reporting it.`,
+        read: false,
+        created_at: now,
+        type: 'resolution',
+        need_id: body.needId,
+        points_awarded: pointsAwarded,
+      });
+    }
+
+    return NextResponse.json({ ok: true, needId: body.needId, pointsAwarded });
+  } catch (error) {
+    console.error('[api/tasks/complete] failed:', error);
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
