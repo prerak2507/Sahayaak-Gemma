@@ -190,6 +190,7 @@ export function buildNeedFromTriage(
     originalDescription: string;
     worker?: { id: string; name: string; title: string } | null;
     ward?: string | null;
+    location?: { name: string; lat: number; lng: number } | null;
     source_type?: string;
     reported_by?: string | null;
     photo_urls?: string[];
@@ -210,8 +211,8 @@ export function buildNeedFromTriage(
     required_crew_size: triage.required_crew_size,
     skills_required: triage.skills_required,
 
-    ward: options.ward ?? triage.location?.name ?? null,
-    location: triage.location,
+    ward: options.ward ?? options.location?.name ?? triage.location?.name ?? null,
+    location: options.location ?? triage.location,
 
     worker: options.worker ?? null,
 

@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     title?: string;
     imageBase64?: string;
     contextNote?: string;
+    location?: { lat?: number; lng?: number; address?: string };
     /** Write the triaged report to the database. Off by default so previewing is free. */
     persist?: boolean;
     source_type?: string;
@@ -81,9 +82,15 @@ export async function POST(request: Request) {
             }
           : null;
 
+      const userLocation =
+        body.location && typeof body.location.lat === 'number' && typeof body.location.lng === 'number'
+          ? { name: body.location.address || 'User Selected Location', lat: body.location.lat, lng: body.location.lng }
+          : null;
+
       const need = buildNeedFromTriage(triage, {
         originalDescription: description,
         worker,
+        location: userLocation,
         source_type: body.source_type ?? 'web',
         reported_by: body.reported_by ?? null,
         photo_urls: body.imageBase64 ? ['pending-upload'] : [],

@@ -243,6 +243,7 @@ export default function ReportPage() {
           ]
             .filter(Boolean)
             .join('\n'),
+          location,
           persist: true,
           source_type: 'web',
           reported_by: user?.id || 'anonymous',

@@ -90,8 +90,8 @@ export default function Page() {
   const DEPARTMENTS = ALL_DEPARTMENTS[activeCity] || ALL_DEPARTMENTS['rajkot'];
   const DEPARTMENT_EMPLOYEES = ALL_DEPARTMENT_EMPLOYEES[activeCity] || ALL_DEPARTMENT_EMPLOYEES['rajkot'];
 
-  // Real-time Firestore sync
-  const { needs: boardNeeds } = useNeeds({ assignment: 'government' });
+  // Real-time server sync
+  const { needs: boardNeeds } = useNeeds({ assignment: 'all' });
 
   useEffect(() => {
     // Read through the server. Firestore rules deny client reads, so the
